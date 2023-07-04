@@ -421,6 +421,45 @@ class ShowData(object):
             fig.update_layout(template='plotly_dark')
             fig.update_layout(title_font_size=20)
             fig.show()
+
+    def show_updrs_sum_ab_visitmonth(self):
+        cli, suppl = self.cli.copy(), self.suppl.copy()
+        cli['updrs_sum'] = 0
+        suppl['updrs_sum'] = 0
+        for i in range(1, 5):
+            cli['updrs_sum'] += cli[f'updrs_{i}']
+            suppl['updrs_sum'] += suppl[f'updrs_{i}']
+        cli_ = cli.groupby('visit_month')['updrs_sum'].mean()
+        suppl_ = suppl.groupby('visit_month')['updrs_sum'].mean()
+
+        display(cli_, suppl_)
+        fig, axs = plt.subplots(nrows=2)
+
+        for j, df in enumerate([cli_, suppl_]):
+            sns.histplot(data=pd.DataFrame({'visit_month':df.index, 'sum':df.values}), x='visit_month', y='sum', ax=axs[j], bins=50, discrete=True)
+        plt.tight_layout()
+        plt.show()
+
+    def show_updrs_sum_ab_patientid(self):
+        cli, suppl = self.cli.copy(), self.suppl.copy()
+        cli['updrs_sum'] = 0
+        suppl['updrs_sum'] = 0
+        for i in range(1, 5):
+            cli['updrs_sum'] += cli[f'updrs_{i}']
+            suppl['updrs_sum'] += suppl[f'updrs_{i}']
+        cli_ = cli.groupby('patient_id')['updrs_sum'].mean()
+        suppl_ = suppl.groupby('patient_id')['updrs_sum'].mean()
+        cli_.plot(kind='hist', bins=20,
+                       title='UPDRS sum, mean for single persion per all visits, supplement data', alpha=0.5,
+                       label='supp')
+        fig, axs = plt.subplots(nrows=2)
+
+        for j, df in enumerate([cli_, suppl_]):
+            sns.histplot(data=df,
+                         ax=axs[j], bins=20, discrete=True)
+        plt.tight_layout()
+        plt.show()
+
 class DataPrep(object):
     pass
 

@@ -24,4 +24,5 @@ data = ShowData(
 # data.coeff_var_pro()
 # data.coeff_var_pro_on_md()
 # data.corr_top5pro_updrs()
-data.show_cli_suppl()
+# data.show_cli_suppl()
+data.show_updrs_sum_ab_patientid()
