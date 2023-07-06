@@ -432,31 +432,118 @@ class ShowData(object):
         cli_ = cli.groupby('visit_month')['updrs_sum'].mean()
         suppl_ = suppl.groupby('visit_month')['updrs_sum'].mean()
 
-        display(cli_, suppl_)
         fig, axs = plt.subplots(nrows=2)
 
+        fig.suptitle('updrs sum about visit month')
         for j, df in enumerate([cli_, suppl_]):
-            sns.histplot(data=pd.DataFrame({'visit_month':df.index, 'sum':df.values}), x='visit_month', y='sum', ax=axs[j], bins=50, discrete=True)
+            # sns.histplot(data=pd.DataFrame({'visit_month':df.index, 'sum':df.values}), x='visit_month', y='sum', ax=axs[j], discrete=True)
+            sns.barplot(data=pd.DataFrame({'visit_month':df.index, 'sum':df.values}), x='visit_month', y='sum', ax=axs[j],color='skyblue')
         plt.tight_layout()
         plt.show()
 
     def show_updrs_sum_ab_patientid(self):
         cli, suppl = self.cli.copy(), self.suppl.copy()
+        cli, suppl = cli.fillna(0), suppl.fillna(0)
         cli['updrs_sum'] = 0
         suppl['updrs_sum'] = 0
+
         for i in range(1, 5):
             cli['updrs_sum'] += cli[f'updrs_{i}']
             suppl['updrs_sum'] += suppl[f'updrs_{i}']
+
         cli_ = cli.groupby('patient_id')['updrs_sum'].mean()
         suppl_ = suppl.groupby('patient_id')['updrs_sum'].mean()
-        cli_.plot(kind='hist', bins=20,
-                       title='UPDRS sum, mean for single persion per all visits, supplement data', alpha=0.5,
-                       label='supp')
-        fig, axs = plt.subplots(nrows=2)
 
+        fig, axs = plt.subplots(nrows=2)
+        fig.suptitle('updrs sum about patient id')
         for j, df in enumerate([cli_, suppl_]):
             sns.histplot(data=df,
-                         ax=axs[j], bins=20, discrete=True)
+                         ax=axs[j], discrete=True)
+        plt.tight_layout()
+        plt.show()
+
+    def show_updrs_mean_ab_md(self):
+        cli, suppl = self.cli.copy(), self.suppl.copy()
+        _ = 'upd23b_clinical_state_on_medication'
+        cli[_] = cli[_].fillna('Null')
+        suppl[_] = suppl[_].fillna('Null')
+
+        fig, axs = plt.subplots(nrows=3, ncols=2, figsize=(12, 12))
+        for i, df in enumerate([cli, suppl]):
+            for j, md in enumerate(['On', 'Off', 'Null']):
+                # df_ = df[df[_] == md]
+                # df_ = df_.groupby(f'{_}').mean()
+                df_ = df.query('upd23b_clinical_state_on_medication in @md').loc[:,['visit_month', 'updrs_1', \
+                                'updrs_2', 'updrs_3', 'updrs_4']]
+                df_ = df_.groupby('visit_month').mean().reset_index()
+
+                # sns.lineplot(data=df_[['updrs_1','updrs_2','updrs_3', 'updrs_4']], ax=axs[j][i])
+                sns.lineplot(data=pd.melt(df_, ['visit_month']), x='visit_month', y='value', hue='variable', ax=axs[j][i])
+                axs[j][i].legend(loc='upper right')
+                if i == 0:
+                    axs[j][i].set_title(f'cli, medication:{md}')
+                else:
+                    axs[j][i].set_title(f'suppl, medication:{md}')
+
+        fig.suptitle('updrs mean about medication on, off, null')
+        plt.tight_layout()
+        plt.show()
+
+    def plot_patient_updrs_info(self, idx=None):
+        cli = self.cli.copy()
+        if idx is None:
+            patients = cli.patient_id.unique()
+            patient = np.random.choice(patients)
+            idx = patient
+
+        patient_df = cli.loc[cli.patient_id == idx].loc[:,
+                     ['visit_month', 'updrs_1', 'updrs_2', 'updrs_3', 'updrs_4',
+                     'upd23b_clinical_state_on_medication']]
+        patient_df['upd23b_clinical_state_on_medication'].replace({'On':1, 'Off':0}, inplace=True)
+        patient_df_ = patient_df.drop(columns='upd23b_clinical_state_on_medication')
+        patient_df_ = pd.melt(patient_df_, ['visit_month'])
+        sns.lineplot(data=patient_df_, x='visit_month', y='value', hue='variable')
+        plt.scatter(x=patient_df['visit_month'], y=patient_df['upd23b_clinical_state_on_medication'], label='on medicine')
+        plt.title(f'patient {idx} clinical info')
+        plt.legend(loc='upper right')
+        plt.grid(True)
+        plt.show()
+
+    def plot_md_ab_visitmonth(self):
+        cli, suppl = self.cli.copy(), self.suppl.copy()
+        _ = 'upd23b_clinical_state_on_medication'
+        cli[_] = cli[_].fillna('Null')
+        suppl[_] = suppl[_].fillna('Null')
+
+        fig, axs = plt.subplots(1, 2, figsize=(10, 6))
+        for j, df in enumerate([cli, suppl]):
+            for i, md in enumerate(['On', 'Off', 'Null']):
+                df_ = df.query(f'{_} in @md')
+                df_.loc[:, ['cnt']] = 1
+                df_ = df_[['visit_month', 'cnt']].groupby('visit_month').sum().reset_index()
+                axs[j].plot(df_['visit_month'], df_['cnt'], label=f'{md}')
+            axs[j].legend()
+            if j == 0:
+                axs[j].set_title('data: cli')
+            else:
+                axs[j].set_title('data: suppl')
+
+            axs[j].set_xlabel('visit month')
+            axs[j].set_ylabel('count')
+        fig.suptitle('medication state on visit month')
+        plt.show()
+
+    def updrs_ab_md(self):
+        cli = self.cli.copy()
+        _ = 'upd23b_clinical_state_on_medication'
+        cli[_] = cli[_].fillna('Null')
+        fig, axs = plt.subplots(3, 1, figsize=(10, 10))
+        for i, md in enumerate(['On', 'Off', 'Null']):
+            df_ = cli.query(f'{_} in @md')
+            df_ = df_[['visit_month', 'updrs_1', 'updrs_2', 'updrs_3', 'updrs_4']]
+            df_ = df_.groupby('visit_month').mean(numeric_only=True).reset_index()
+            sns.lineplot(data=pd.melt(df_, ['visit_month']), x='visit_month', y='value', hue='variable', ax=axs[i])
+            axs[i].set_title(f'mean updrs on medication: {md}')
         plt.tight_layout()
         plt.show()
 
