@@ -23,25 +23,36 @@ class ShowData(object):
         self.data = [self.pep, self.pro, self.cli, self.suppl]
         self.abundance_cv_mean_pep = None
         self.abundance_cv_mean_pro = None
-    def show_shape(self):
-        df_shape_list = []
-        for i in self.data:
-            if i is not None:
-                df_shape_list.append(i.shape)
-        return dict(zip(self.df_name_list, df_shape_list))
 
-    def show_null_count(self):
-        null_count_list = []
-        for i in self.data:
-            if i is not None:
-                null_count_list.append((i.isna().sum()))
-        return dict(zip(self.df_name_list, null_count_list))
+    def about_data(self, df_num=0, all_data=False):
+        if all_data == True:
+            data = self.data
+            for i, item in enumerate(data):
+                print('data: ' + self.df_name_list[i])
+                display(item.head())
+                print(self.show_col(i))
+                print('shape: ' + str(self.show_shape(i)))
+                print('null count: ', self.show_null_count(i), sep='\n')
+                print()
+        else:
+            data = self.data[df_num]
+            print('data: ' + self.df_name_list[df_num])
+            display(data.head())
+            print(self.show_col(df_num))
+            print('shape: ' + str(self.show_shape(df_num)))
+            print('null count: ', self.show_null_count(df_num), sep='\n')
+    def show_shape(self, df_num=0):
+        df = self.data[df_num]
+        return df.shape
 
-    def display_head(self):
-        df_head_list = []
-        for i in self.data:
-            df_head_list.append(i.head())
-        return df_head_list
+
+    def show_null_count(self, df_num=0):
+        df = self.data[df_num]
+        return df.isna().sum()
+
+    def show_col(self, df_num=0):
+        df = self.data[df_num]
+        return df.columns
 
     def plot_null_count(
         self,
@@ -60,7 +71,7 @@ class ShowData(object):
             df,
             x=x,
             color=y,
-            title=f"count of {x}",
+            title=f"count of {x} - cli",
             color_discrete_sequence=px.colors.qualitative.Vivid,
             width=width,
             height=height,
@@ -90,6 +101,7 @@ class ShowData(object):
                 fig.add_trace(fig_, row=i + 1, col=1)
             fig.update_yaxes(title_text=f"UPDRS Part {updrs_part}", row=i + 1)
         fig.update_layout(template="plotly_dark")
+        fig.update_layout(title='state_on_medication: On, Off, Null')
         fig.update_layout(title_font_size=title_font_size)
         fig.show()
 
@@ -153,11 +165,11 @@ class ShowData(object):
         )
         df_agg["CV_PeptideAbundance[%]"] = df_agg["std"] / df_agg["mean"] * 100
         abundance_cv_mean = self.make_abundance_cv_mean_pep()
-        protein_cv_top5 = abundance_cv_mean[:5]["Peptide"]
+        peptide_cv_top5 = abundance_cv_mean[:5]["Peptide"]
 
-        df_agg_top5 = df_agg.query("Peptide in @protein_cv_top5").reset_index()
+        df_agg_top5 = df_agg.query("Peptide in @peptide_cv_top5").reset_index()
         df_agg_top5["order"] = 0
-        for i, peptide in enumerate(protein_cv_top5):
+        for i, peptide in enumerate(peptide_cv_top5):
 
             df_agg_top5.loc[df_agg_top5["Peptide"] == peptide, 'order'] = i
         df_agg_top5.sort_values(by="order", inplace=True)
@@ -247,6 +259,7 @@ class ShowData(object):
         pep_candidate_df = self.pep.query('Peptide in @pep_candidates')
         visit_ids = pep_candidate_df.visit_id.unique()
         pep_dict_list = []
+
         for visit_id in visit_ids:
             pep_df = pep_candidate_df.query(f'visit_id=="{visit_id}"')
             peptides = pep_df['Peptide'].values
@@ -398,9 +411,7 @@ class ShowData(object):
         fig.show()
 
     def show_cli_suppl(self):
-        if self.suppl is None:
-            print('supplemental data is None')
-            return
+
         med = 'upd23b_clinical_state_on_medication'
         cli, suppl = self.cli.copy(), self.suppl.copy()
         cli[med], suppl[med] = cli[med].fillna('Null'), suppl[med].fillna('Null')
@@ -414,13 +425,19 @@ class ShowData(object):
         features = ['visit_month', 'upd23b_clinical_state_on_medication', 'updrs_1', 'updrs_2',
         'updrs_3', 'updrs_4']
 
-        for x in features:
-            fig = px.histogram(all_df, x=x, color='cli_or_suppl', title=f'<b>Count of {x}',
-                             color_discrete_sequence=px.colors.qualitative.Vivid,
-                             width=800, height=500)
-            fig.update_layout(template='plotly_dark')
-            fig.update_layout(title_font_size=20)
-            fig.show()
+        fig = make_subplots(rows=len(features),horizontal_spacing=0.10,
+            vertical_spacing=0.06,)
+        for i, x in enumerate(features):
+            for cli_or_suppl in ['cli', 'suppl']:
+                all_df_ = all_df.query('cli_or_suppl == @cli_or_suppl')
+                fig.add_trace(
+                    go.Histogram(x=all_df_[x], name=f'{cli_or_suppl}'), row=i+1, col=1
+                )
+            fig.update_yaxes(title_text=f'<b>Count of {x}', row=i + 1)
+        fig.update_layout(template='plotly_dark', width=1600, height=2000)
+        fig.update_layout(title_font_size=20)
+
+        fig.show()
 
     def show_updrs_sum_ab_visitmonth(self):
         cli, suppl = self.cli.copy(), self.suppl.copy()
@@ -533,19 +550,6 @@ class ShowData(object):
         fig.suptitle('medication state on visit month')
         plt.show()
 
-    def updrs_ab_md(self):
-        cli = self.cli.copy()
-        _ = 'upd23b_clinical_state_on_medication'
-        cli[_] = cli[_].fillna('Null')
-        fig, axs = plt.subplots(3, 1, figsize=(10, 10))
-        for i, md in enumerate(['On', 'Off', 'Null']):
-            df_ = cli.query(f'{_} in @md')
-            df_ = df_[['visit_month', 'updrs_1', 'updrs_2', 'updrs_3', 'updrs_4']]
-            df_ = df_.groupby('visit_month').mean(numeric_only=True).reset_index()
-            sns.lineplot(data=pd.melt(df_, ['visit_month']), x='visit_month', y='value', hue='variable', ax=axs[i])
-            axs[i].set_title(f'mean updrs on medication: {md}')
-        plt.tight_layout()
-        plt.show()
 
 class DataPrep(object):
     pass
