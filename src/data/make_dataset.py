@@ -550,6 +550,12 @@ class ShowData(object):
         fig.suptitle('medication state on visit month')
         plt.show()
 
+    def find_high_corr_pep(self):
+        cli, pep = self.cli.copy(), self.pep.copy()
+        df = pd.merge(pep, cli[['visit_id', 'updrs_1', 'updrs_2', 'updrs_3', 'updrs_4']], on='visit_id')
+        patient_ids = df.patient_id.unique()
+        for patient_id in patient_ids:
+            df_ = df.query('patient_id == @patient_id')
 
 class DataPrep(object):
     pass
