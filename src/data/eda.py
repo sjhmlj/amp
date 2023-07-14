@@ -254,6 +254,7 @@ def corr_top5pep_updrs(pep=pep, cli=cli):
     corr = cli_pep_df_.corr()
     fig = px.imshow(corr, width=750, height=750, title='<b>Correlation: UPDR scores and Peptide Abundance')
     fig.show()
+    return corr
 
 def make_abundance_cv_mean_pro(data=pro):
     df = data[["patient_id", "UniProt", "NPX"]]
@@ -530,9 +531,138 @@ def plot_md_ab_visitmonth(cli=cli, suppl=suppl):
     fig.suptitle('medication state on visit month')
     plt.show()
 
-# def find_high_corr_pep(cli=cli, pep=pep):
-#     cli, pep = cli.copy(), pep.copy()
-#     df = pd.merge(pep, cli[['visit_id', 'updrs_1', 'updrs_2', 'updrs_3', 'updrs_4']], on='visit_id')
-#     patient_ids = df.patient_id.unique()
-#     for patient_id in patient_ids:
-#         df_ = df.query('patient_id == @patient_id')
+def find_high_corr_pep(cli=cli, pep=pep, baseline=0.1, method='pearson'):
+    cli, pep = cli.copy(), pep.copy()
+    df = pd.merge(pep, cli[['visit_id', 'updrs_1', 'updrs_2', 'updrs_3', 'updrs_4']], on='visit_id')
+    peptides = df.Peptide.unique()
+
+    peptides_dict = {}
+
+    for peptide in peptides:
+        df_ = df.query('Peptide == @peptide')
+        pep_abundance = df_.PeptideAbundance
+
+        updrs_list = []
+        for num in range(1, 5):
+            updrs = df_[f'updrs_{num}']
+            corr = updrs.corr(pep_abundance, method=method)
+            if abs(corr) > baseline:
+                updrs_list.append([f'updrs_{num}', corr])
+        if updrs_list:
+            peptides_dict[peptide] = updrs_list
+
+    return peptides_dict
+
+def find_high_corr_pep_grouped(cli=cli, pep=pep, baseline=0.3, method='pearson'):
+    cli, pep = cli.copy(), pep.copy()
+    df = pd.merge(pep, cli[['visit_id', 'updrs_1', 'updrs_2', 'updrs_3', 'updrs_4']], on='visit_id')
+    peptides = df.Peptide.unique()
+
+    peptides_dict = {}
+
+    for peptide in peptides:
+        df_ = df.query('Peptide == @peptide')
+        # pep_abundance = df_.PeptideAbundance
+
+        updrs_list = []
+        for num in range(1, 5):
+            df_gb_updrs = df_.groupby(f'updrs_{num}').mean(numeric_only=True).reset_index()
+
+            updrs = df_gb_updrs[f'updrs_{num}']
+            pep_abundance = df_gb_updrs['PeptideAbundance']
+            corr = updrs.corr(pep_abundance, method=method)
+            if abs(corr) > baseline:
+                updrs_list.append([f'updrs_{num}', corr])
+        if updrs_list:
+            peptides_dict[peptide] = updrs_list
+
+    return peptides_dict
+def find_high_corr_pro(cli=cli, pro=pro, baseline=0.1, method='pearson'):
+    cli, pep = cli.copy(), pro.copy()
+    df = pd.merge(pro, cli[['visit_id', 'updrs_1', 'updrs_2', 'updrs_3', 'updrs_4']], on='visit_id')
+    proteins = df.UniProt.unique()
+
+    proteins_dict = {}
+
+    for protein in proteins:
+        df_ = df.query('UniProt == @protein')
+        pro_abundance = df_.NPX
+
+        updrs_list = []
+        for num in range(1, 5):
+            updrs = df_[f'updrs_{num}']
+            corr = updrs.corr(pro_abundance, method=method)
+            if abs(corr) > baseline:
+                updrs_list.append([f'updrs_{num}', corr])
+        if updrs_list:
+            proteins_dict[protein] = updrs_list
+
+    return proteins_dict
+
+def find_high_corr_pro_grouped(cli=cli, pro=pro, baseline=0.3, method='pearson'):
+    cli, pep = cli.copy(), pro.copy()
+    df = pd.merge(pro, cli[['visit_id', 'updrs_1', 'updrs_2', 'updrs_3', 'updrs_4']], on='visit_id')
+    proteins = df.UniProt.unique()
+
+    proteins_dict = {}
+
+    for protein in proteins:
+        df_ = df.query('UniProt == @protein')
+        # pro_abundance = df_.NPX
+
+        updrs_list = []
+        for num in range(1, 5):
+            df_gb_updrs = df_.groupby(f'updrs_{num}').mean(numeric_only=True).reset_index()
+            updrs = df_gb_updrs[f'updrs_{num}']
+            pro_abundance = df_gb_updrs['NPX']
+            corr = updrs.corr(pro_abundance, method=method)
+            if abs(corr) > baseline:
+                updrs_list.append([f'updrs_{num}', corr])
+        if updrs_list:
+            proteins_dict[protein] = updrs_list
+
+    return proteins_dict
+
+def plot_corr_updrs(cli=cli):
+    df = cli[['updrs_1', 'updrs_2', 'updrs_3', 'updrs_4']]
+    corr = df.corr()
+    mask = np.tri(len(corr.columns), k=0)
+    sns.heatmap(corr, mask=mask.T, annot=True, cmap='Greens')
+    plt.show()
+
+def find_corr_visit_updrs(cli=cli, method='pearson'):
+    visit_12p = [12, 24, 36, 48, 60, 72, 84]
+    df1 = cli.query('visit_month not in @visit_12p')
+
+    dict1 = {}
+    dict2 = {}
+    for i in range(1, 5):
+        df1_ = df1[f'updrs_{i}']
+        df1_visits = df1['visit_month']
+        dict1[f'updrs_{i}'] = df1_.corr(df1_visits, method=method)
+
+        df_ = cli[f'updrs_{i}']
+        df_visits = cli['visit_month']
+        dict2[f'updrs_{i}'] = df_.corr(df_visits, method=method)
+
+    return dict1, dict2
+
+def find_corr_groupedvisit_updrs(cli=cli, method='pearson'):
+    visit_12p = [12*i for i in range(1, 8)]
+    df1_ = cli.query('visit_month not in @visit_12p')
+    df1_ = df1_.groupby('visit_month').mean(numeric_only=True).reset_index()
+
+    df2_ = cli.groupby('visit_month').mean(numeric_only=True).reset_index()
+    dict1 = {}
+    dict2 = {}
+    for i in range(1, 5):
+        updrs = df1_[f'updrs_{i}']
+        visits = df1_['visit_month']
+        dict1[f'updrs_{i}'] = updrs.corr(visits, method=method)
+
+        updrs2 = df2_[f'updrs_{i}']
+        visits2 = df2_['visit_month']
+        dict2[f'updrs_{i}'] = updrs.corr(visits2, method=method)
+
+    return dict1, dict2
+
