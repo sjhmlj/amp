@@ -536,47 +536,73 @@ def find_high_corr_pep(cli=cli, pep=pep, baseline=0.1, method='pearson'):
     df = pd.merge(pep, cli[['visit_id', 'updrs_1', 'updrs_2', 'updrs_3', 'updrs_4']], on='visit_id')
     peptides = df.Peptide.unique()
 
-    peptides_dict = {}
+    peptides_dict = dict(zip([f'updrs_{i}' for i in range(1,5)], [[] for j in range(4)]))
 
-    for peptide in peptides:
-        df_ = df.query('Peptide == @peptide')
-        pep_abundance = df_.PeptideAbundance
+    for num in range(1, 5):
+        updrs = f'updrs_{num}'
 
-        updrs_list = []
-        for num in range(1, 5):
-            updrs = df_[f'updrs_{num}']
-            corr = updrs.corr(pep_abundance, method=method)
-            if abs(corr) > baseline:
-                updrs_list.append([f'updrs_{num}', corr])
-        if updrs_list:
-            peptides_dict[peptide] = updrs_list
+        for peptide in peptides:
+            df_ = df.query('Peptide == @peptide')
+            pep_abundance = df_.PeptideAbundance
+
+            if abs(df_[updrs].corr(pep_abundance, method=method)) >= baseline :
+                peptides_dict[updrs].append(peptide)
 
     return peptides_dict
+    # for peptide in peptides:
+    #     df_ = df.query('Peptide == @peptide')
+    #     pep_abundance = df_.PeptideAbundance
+    #
+    #     updrs_list = []
+    #     for num in range(1, 5):
+    #         updrs = df_[f'updrs_{num}']
+    #         corr = updrs.corr(pep_abundance, method=method)
+    #         if abs(corr) > baseline:
+    #             updrs_list.append([f'updrs_{num}', corr])
+    #     if updrs_list:
+    #         peptides_dict[peptide] = updrs_list
+    #
+    # return peptides_dict
 
 def find_high_corr_pep_grouped(cli=cli, pep=pep, baseline=0.3, method='pearson'):
     cli, pep = cli.copy(), pep.copy()
     df = pd.merge(pep, cli[['visit_id', 'updrs_1', 'updrs_2', 'updrs_3', 'updrs_4']], on='visit_id')
     peptides = df.Peptide.unique()
 
-    peptides_dict = {}
+    # peptides_dict = {}
 
-    for peptide in peptides:
-        df_ = df.query('Peptide == @peptide')
-        # pep_abundance = df_.PeptideAbundance
+    peptides_dict = dict(zip([f'updrs_{i}' for i in range(1,5)], [[] for j in range(4)]))
 
-        updrs_list = []
-        for num in range(1, 5):
+    for num in range(1, 5):
+        updrs = f'updrs_{num}'
+
+        for peptide in peptides:
+            df_ = df.query('Peptide == @peptide')
             df_gb_updrs = df_.groupby(f'updrs_{num}').mean(numeric_only=True).reset_index()
+            pep_abundance = df_gb_updrs.PeptideAbundance
 
-            updrs = df_gb_updrs[f'updrs_{num}']
-            pep_abundance = df_gb_updrs['PeptideAbundance']
-            corr = updrs.corr(pep_abundance, method=method)
-            if abs(corr) > baseline:
-                updrs_list.append([f'updrs_{num}', corr])
-        if updrs_list:
-            peptides_dict[peptide] = updrs_list
+            if abs(df_gb_updrs[updrs].corr(pep_abundance, method=method)) >= baseline :
+                peptides_dict[updrs].append(peptide)
 
     return peptides_dict
+
+    # for peptide in peptides:
+    #     df_ = df.query('Peptide == @peptide')
+    #     # pep_abundance = df_.PeptideAbundance
+    #
+    #     updrs_list = []
+    #     for num in range(1, 5):
+    #         df_gb_updrs = df_.groupby(f'updrs_{num}').mean(numeric_only=True).reset_index()
+    #
+    #         updrs = df_gb_updrs[f'updrs_{num}']
+    #         pep_abundance = df_gb_updrs['PeptideAbundance']
+    #         corr = updrs.corr(pep_abundance, method=method)
+    #         if abs(corr) > baseline:
+    #             updrs_list.append([f'updrs_{num}', corr])
+    #     if updrs_list:
+    #         peptides_dict[peptide] = updrs_list
+    #
+    # return peptides_dict
 def find_high_corr_pro(cli=cli, pro=pro, baseline=0.1, method='pearson'):
     cli, pep = cli.copy(), pro.copy()
     df = pd.merge(pro, cli[['visit_id', 'updrs_1', 'updrs_2', 'updrs_3', 'updrs_4']], on='visit_id')
