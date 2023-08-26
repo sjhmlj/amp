@@ -1,4 +1,4 @@
-## Data
+## Data analysis
 
 - peptides
   - columns: visit_id, visit_month, patient_id, UniProt, Peptide, PeptideAbundance
@@ -31,7 +31,30 @@
     - updrs_4: 928
     - upd23b_clinical_state_on_medication: 1101
 
+## Data information
 
+- updrs
+  - https://www.movementdisorders.org/MDS/MDS-Rating-Scales/MDS-Unified-Parkinsons-Disease-Rating-Scale-MDS-UPDRS.htm
+  - https://www.movementdisorders.org/MDS-Files1/PDFs/Rating-Scales/MDS-UPDRS_English_FINAL.pdf
+  - part 1
+    - Non-Motor Aspects of Experiences of Daily Living
+    - this portion of scale assesses the non-motor impact of PD on patient's experiences of daily living. There are 13 questions. Part 1A is administered by the rater(six questions) and focuses on complex behaviors. Part 1B is a component of self-administered Patient Questionnaire that covers seven questions on non-motor experiences of daily living. 
+    - like cognitive impairment, depressed mood, etc. 
+  - part 2
+    - Motor Aspects of Experiences of Daily Living
+    - like speech, eating tasks, dressing, hygiene, handwriting, etc.
+  - Part 3
+    - Motor Examination
+    - at the top of the form, mark whether the patient is on medication for treating the symptoms of PD and, if on levodopa, the time since the last dose. 
+    - also, if the patient is receiving medication for treating the symptoms of PD, mark the patient's clinical state using the following definitions
+      - ON is the typical functional state when patients are receiving medication and have a good response. 
+      - OFF is the typical functional state when patients have a poor response in spite of taking medications.
+  - part 4
+    - in this section, the rater uses historical and objective information to assess two motor complications, dyskinesias and motor fluctuations that include OFF-state dystonia. 
+- upd23b_clinical_state_on_medication
+  - Whether or not the patient was taking medication such as Levodopa during the UPDRS assessment. Expected to mainly affect the scores for Part 3 (motor function). These medications wear off fairly quickly (on the order of one day) so it's common for patients to take the motor function exam twice in a single month, both with and without medication.
+- Supplemental_clinical_data
+  - Clinical records without any associated CSF samples. This data is intended to provide additional context about the typical progression of Parkinsons.
 
 ## Data Visualization
 
@@ -83,6 +106,16 @@
     - plot pca
     - check frequency of each updrs, on visit month
     - understand correlation and each method(pearson first)
+  
+- 7/21
+  
+  - Peptide도 std, mean 다르니까 이거 변환하고 pca 돌려보기
+    - 보통 standardization 하면 std가 -4 ~ 4 사이가 나온다고 한다(ando)
+    - Data 제공자 측에 preprocessing 된 건지 알아보기(max)
+  
+  - Updrs n등분해서 pca 지켜보기
+  
+  - Updrs 파트별로 따로 pca 그려보기
 
 ## Q
 
